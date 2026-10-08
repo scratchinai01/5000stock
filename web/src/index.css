@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Noto Sans TC", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --color-ink: #13161c;
+  --color-paper: #f6f5f1;
+  --color-line: #e2dfd6;
+  --color-up: #d1242f;     /* 台灣慣例：紅漲 */
+  --color-down: #1a7f37;   /* 綠跌 */
+  --color-brand: #b8860b;
+}
+
+body { background: var(--color-paper); color: var(--color-ink); }
+.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.card { background: white; border: 1px solid var(--color-line); border-radius: 14px; }
+.btn { display:inline-flex; align-items:center; gap:.4rem; border-radius:10px; padding:.5rem .9rem; font-weight:700; font-size:.875rem; transition: background .15s, opacity .15s; }
+.btn:disabled { opacity:.45; cursor:not-allowed; }
+.btn-primary { background: var(--color-ink); color: white; }
+.btn-primary:hover:not(:disabled) { background: #2b313b; }
+.btn-ghost { background: transparent; border: 1px solid var(--color-line); }
+.btn-ghost:hover:not(:disabled) { background: #efede6; }
+.btn-danger { background: #b42318; color: white; }
+.input { width:100%; border:1px solid var(--color-line); background:white; border-radius:10px; padding:.55rem .75rem; font-size:.9rem; }
+.input:focus { outline: 2px solid #c9a227; outline-offset: 0; }
+.label { font-size:.75rem; font-weight:700; color:#5b616e; margin-bottom:.25rem; display:block; }
+table.data-table { width:100%; font-size:.85rem; }
+table.data-table th { text-align:left; font-size:.72rem; color:#6b7280; font-weight:700; padding:.55rem .6rem; border-bottom:1px solid var(--color-line); white-space:nowrap; }
+table.data-table td { padding:.55rem .6rem; border-bottom:1px solid #efece4; vertical-align:top; }
+table.data-table tr:hover td { background:#faf9f5; }
