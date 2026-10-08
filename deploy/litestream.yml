@@ -1,0 +1,6 @@
+# Litestream：把 SQLite 持續備份到雲端儲存 (例：gcs://你的bucket/tycoon.db)，容器重啟時自動還原
+dbs:
+  - path: ${DATA_DIR}/tycoon.db
+    replicas:
+      - url: ${LITESTREAM_REPLICA_URL}
+        sync-interval: 1s

@@ -72,9 +72,29 @@ npm start
 ### 部署注意事項
 
 - 資料存在 `DATA_DIR`（預設 `./var/tycoon.db`）。**Cloud Run、AI Studio 這類無狀態平台重啟會清空本機檔案**，請掛載永久磁碟到 `DATA_DIR`，或定期從後台下載備份。
-- 提供 `Dockerfile`（資料目錄 `/data`）。
+- 提供 `Dockerfile`（資料目錄 `/data`，內含 Litestream 雲端備份，見下方 Google Cloud Run 說明）。
 - 課堂區網用 `http://IP` 直接連線的正式模式，請設 `INSECURE_COOKIE=1`，否則瀏覽器不會儲存登入 cookie。
 - 報價需要能連到 `api.finmindtrade.com`、`query1.finance.yahoo.com`、`api.binance.com`。Yahoo 為非官方介面，可能偶爾失效，此時會自動改用備援並在後台顯示。
+
+## 部署到 Google Cloud Run（推送 GitHub 自動部署）
+
+Cloud Run 每次重啟都會清空容器硬碟，所以本專案用 **Litestream** 把 SQLite 每秒備份到 Cloud Storage，容器啟動時自動還原（`deploy/start.sh`、`deploy/litestream.yml`，已包含在 `Dockerfile`）。
+
+1. **建立 Cloud Storage bucket**：區域建議 `asia-east1`（台灣），其餘預設即可。
+2. **建立 Cloud Run 服務**：選「從存放區持續部署 (GitHub)」，透過 Cloud Build 連接 `5000stock`，分支 `main`，建置類型選 **Dockerfile**。
+3. **服務設定**：
+   - 區域 `asia-east1`；驗證選「允許未經驗證的叫用」（學生要能開網頁）
+   - 容器連接埠 `8080`
+   - **執行個體數量上限 = 1**（SQLite 只能有一個寫入者，必設）；下限可設 0
+   - CPU 建議選「一律分配」（以執行個體計費），讓備份在沒有請求時也能進行
+   - 環境變數：
+     - `LITESTREAM_REPLICA_URL` = `gcs://你的bucket名稱/tycoon.db`
+     - `ADMIN_PASSWORD` = 管理員初始密碼
+     - `FINMIND_TOKEN` = （選填）
+4. **授權備份**：到 bucket 的「權限」，把 Cloud Run 使用的服務帳戶加入，角色選「Storage 物件管理員 (Storage Object Admin)」。
+5. 部署完成後 Cloud Run 會給一個 `https://…run.app` 網址。之後每次推送到 `main` 都會自動重新部署，資料會保留。
+
+注意：部署切換的短暫期間可能同時有新舊兩個容器，極少數情況下該瞬間的寫入可能遺失；正式比賽前後建議從後台下載一次資料庫備份。
 
 ## 交易規則（可在 `server/trading/fees.ts` 調整）
 
