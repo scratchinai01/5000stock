@@ -11,6 +11,7 @@ export const DEFAULT_SETTINGS: Settings = {
   allowManualQuotes: true,
   manualUsdTwd: null,
   tradingFrozen: false,
+  enforcePriceLimits: true,
 };
 
 export function getSettings(): Settings {

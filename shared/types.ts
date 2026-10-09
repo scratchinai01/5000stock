@@ -54,6 +54,11 @@ export interface Quote {
   source: string;          // 例："FinMind TaiwanStockPrice"、"Yahoo 2330.TW"
   fetchedAt: number;       // 伺服器取得此報價的 epoch 毫秒
   note?: string;           // 手動報價說明
+  /** 最佳一檔委買／委賣 (僅即時快照提供；台股單位為張) */
+  bestBid?: number;
+  bestBidVolume?: number;
+  bestAsk?: number;
+  bestAskVolume?: number;
 }
 
 export interface Instrument {
@@ -194,6 +199,8 @@ export interface Settings {
   /** 管理員手動設定的 USD/TWD (取不到即時匯率時使用，會標示) */
   manualUsdTwd: number | null;
   tradingFrozen: boolean;
+  /** true: 台股／ETF 套用漲跌停成交規則 (鎖死無法成交，未鎖死時以委賣/委買量為上限) */
+  enforcePriceLimits: boolean;
 }
 
 export interface OrderPreview {
@@ -216,6 +223,8 @@ export interface OrderPreview {
   allowed: boolean;
   blockReason?: string;
   warnings: string[];
+  /** 漲跌停資訊 (僅台股／ETF 且有前一日收盤價時提供) */
+  priceLimit?: { state: 'NONE' | 'LIMIT_UP' | 'LIMIT_DOWN'; limitUp?: number; limitDown?: number; blocked: boolean };
 }
 
 export interface AuditLog {

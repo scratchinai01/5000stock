@@ -42,6 +42,7 @@ export default function AdminSettings() {
             <input className="input num !w-32" type="number" min={0} value={f.maxQuoteAgeMinutesWhenOpen} onChange={e => set('maxQuoteAgeMinutesWhenOpen', Number(e.target.value))} />
           </div>
           <Toggle checked={f.allowManualQuotes} onChange={v => set('allowManualQuotes', v)} label="允許使用管理員手動報價" desc="關閉後，手動報價全部失效。" />
+          <Toggle checked={f.enforcePriceLimits} onChange={v => set('enforcePriceLimits', v)} label="台股／ETF 套用漲跌停成交規則" desc="漲停時看即時委賣量、跌停時看即時委買量：量為 0 視為鎖死無法成交，有量時最多只能成交該數量。非即時報價（延遲、收盤、手動）一律視為鎖死。被拒絕的委託記錄在「操作紀錄」。" />
         </div>
 
         <div className="card p-4 space-y-2">

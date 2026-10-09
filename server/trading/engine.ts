@@ -9,6 +9,7 @@ import { getInstrument, ensureOptionInstrument, parseOptionSymbol } from '../ins
 import { getQuote, getUsdTwd, toSnapshot } from '../quotes/service.ts';
 import { taipeiText } from '../time.ts';
 import { calcFeeTax, round2 } from './fees.ts';
+import { checkPriceLimit } from './priceLimit.ts';
 
 export class TradeError extends Error {
   constructor(message: string, public status = 400) {
@@ -118,6 +119,17 @@ export async function previewOrder(userId: number, input: OrderInput, now = Date
     block(`盤中報價已超過 ${settings.maxQuoteAgeMinutesWhenOpen} 分鐘未更新（距今 ${snap.ageMinutes} 分鐘）`);
   }
 
+  // 漲跌停
+  let priceLimit: OrderPreview['priceLimit'];
+  if (settings.enforcePriceLimits) {
+    const pl = checkPriceLimit(inst, quote, side, intent, qty);
+    if (pl.limitUp !== undefined) {
+      priceLimit = { state: pl.state, limitUp: pl.limitUp, limitDown: pl.limitDown, blocked: !!pl.block };
+    }
+    if (pl.block) block(pl.block);
+    else if (pl.warning) warnings.push(pl.warning);
+  }
+
   // 匯率
   let fx = 1;
   let fxSource = '新台幣計價';
@@ -176,6 +188,7 @@ export async function previewOrder(userId: number, input: OrderInput, now = Date
     allowed: !blockReason,
     blockReason,
     warnings,
+    priceLimit,
   };
 }
 
@@ -206,7 +219,14 @@ function closeMath(pos: Position, inst: Instrument, qty: number, price: number, 
 export async function executeOrder(userId: number, input: OrderInput, actor: string): Promise<Trade> {
   const now = Date.now();
   const pv = await previewOrder(userId, input, now);
-  if (!pv.allowed) throw new TradeError(pv.blockReason || '委託被拒絕', 409);
+  if (!pv.allowed) {
+    // 漲跌停被拒的委託留下紀錄，老師可在「操作紀錄」查看
+    if (pv.priceLimit?.blocked) {
+      audit(actor, 'ORDER_REJECTED_PRICE_LIMIT',
+        `${pv.instrument.symbol} ${pv.instrument.name} ${pv.intent === 'OPEN' ? '新倉' : '平倉'}${pv.side === 'LONG' ? '多' : '空'} ${pv.qty}${pv.instrument.unitLabel} @${pv.price}（${pv.quoteSnapshot.source} ${pv.quoteSnapshot.quoteDate} ${pv.quoteSnapshot.quoteTime ?? ''}）：${pv.blockReason}`);
+    }
+    throw new TradeError(pv.blockReason || '委託被拒絕', 409);
+  }
   const inst = pv.instrument;
 
   const tradeId = tx(() => {

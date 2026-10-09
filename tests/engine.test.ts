@@ -123,3 +123,24 @@ test('不可平倉超過持有數量；不可放空不開放的商品', async ()
   const pv2 = await E.previewOrder(uid, { symbol: 'NVDA', side: 'SHORT', intent: 'OPEN', qty: 1 });
   assert.equal(pv2.allowed, false);
 });
+
+test('漲跌停：手動報價漲停時拒絕買進並寫入操作紀錄；賣出可成交；關閉設定後不限制', async () => {
+  const set = (price: number) =>
+    setManualQuote({ symbol: '2317', price, prevClose: 100, quoteDate: today(), quoteTime: '10:00:00', note: 'test', mode: 'override', setBy: 'test' });
+  set(105);
+  await E.executeOrder(uid, { symbol: '2317', side: 'LONG', intent: 'OPEN', qty: 1 }, 't');
+  set(110);
+  const pv = await E.previewOrder(uid, { symbol: '2317', side: 'LONG', intent: 'OPEN', qty: 1 });
+  assert.equal(pv.allowed, false);
+  assert.equal(pv.priceLimit?.state, 'LIMIT_UP');
+  assert.equal(pv.priceLimit?.limitUp, 110);
+  await assert.rejects(E.executeOrder(uid, { symbol: '2317', side: 'LONG', intent: 'OPEN', qty: 1 }, '測試生'), /漲停 110/);
+  const log = getDb().prepare("SELECT * FROM audit_logs WHERE action = 'ORDER_REJECTED_PRICE_LIMIT'").get() as any;
+  assert.ok(log && log.detail.includes('2317'));
+  const sell = await E.executeOrder(uid, { symbol: '2317', side: 'LONG', intent: 'CLOSE', qty: 1 }, 't');
+  assert.equal(sell.price, 110);
+  updateSettings({ enforcePriceLimits: false });
+  assert.equal((await E.previewOrder(uid, { symbol: '2317', side: 'LONG', intent: 'OPEN', qty: 1 })).allowed, true);
+  updateSettings({ enforcePriceLimits: true });
+  await reconciles();
+});

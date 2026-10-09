@@ -243,6 +243,18 @@ export default function TradePage() {
                   </div>
                   <div className="mt-3 pt-3 border-t border-[var(--color-line)] text-xs space-y-1">
                     <div className="flex flex-wrap items-center gap-1"><span className="font-bold">成交價依據：</span><QuoteTag q={preview.quoteSnapshot} /></div>
+                    {preview.priceLimit && (
+                      <div className="text-slate-600">
+                        <span className="font-bold">今日漲跌停：</span>
+                        <span className="num text-[var(--color-up)]">漲停 {preview.priceLimit.limitUp}</span>{' ／ '}
+                        <span className="num text-[var(--color-down)]">跌停 {preview.priceLimit.limitDown}</span>
+                        {preview.priceLimit.state !== 'NONE' && (
+                          <b className={preview.priceLimit.state === 'LIMIT_UP' ? 'text-[var(--color-up)]' : 'text-[var(--color-down)]'}>
+                            {' '}· 目前{preview.priceLimit.state === 'LIMIT_UP' ? '漲停' : '跌停'}
+                          </b>
+                        )}
+                      </div>
+                    )}
                     {preview.warnings.map(w => <div key={w} className="text-amber-800">⚠ {w}</div>)}
                   </div>
                   {!preview.allowed && <div className="mt-3"><Alert tone="error">{preview.blockReason}</Alert></div>}

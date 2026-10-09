@@ -21,6 +21,23 @@ async function getJson(url: string, timeoutMs = 6000): Promise<any> {
 const num = (v: any) => (v === null || v === undefined || v === '' ? NaN : Number(v));
 const valid = (v: number) => Number.isFinite(v) && v > 0;
 
+/** 即時快照的最佳一檔委買賣 (FinMind 欄位 buy_price/buy_volume/sell_price/sell_volume)；欄位不存在就不填 */
+function bookFrom(row: any): Pick<Quote, 'bestBid' | 'bestBidVolume' | 'bestAsk' | 'bestAskVolume'> {
+  const out: Pick<Quote, 'bestBid' | 'bestBidVolume' | 'bestAsk' | 'bestAskVolume'> = {};
+  const vol = (v: any) => (v === null || v === undefined || v === '' ? undefined : Number.isFinite(Number(v)) ? Math.max(0, Number(v)) : undefined);
+  if ('sell_volume' in row) {
+    out.bestAskVolume = vol(row.sell_volume);
+    out.bestAsk = valid(num(row.sell_price)) ? num(row.sell_price) : undefined;
+    if (out.bestAsk === undefined) out.bestAskVolume = 0; // 沒有委賣價 = 沒有人賣
+  }
+  if ('buy_volume' in row) {
+    out.bestBidVolume = vol(row.buy_volume);
+    out.bestBid = valid(num(row.buy_price)) ? num(row.buy_price) : undefined;
+    if (out.bestBid === undefined) out.bestBidVolume = 0;
+  }
+  return out;
+}
+
 // ───────────────────────── FinMind ─────────────────────────
 let finmindToken = (process.env.FINMIND_TOKEN || process.env.FINMIND_API_TOKEN || '').trim();
 export const setFinmindToken = (t: string) => (finmindToken = t.trim());
@@ -50,6 +67,7 @@ export async function finmindStock(inst: Instrument): Promise<Quote | null> {
           quoteEpoch: taipeiEpoch(d, t),
           source: 'FinMind taiwan_stock_tick_snapshot',
           fetchedAt: now,
+          ...bookFrom(row),
         };
       }
     } catch {

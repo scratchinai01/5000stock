@@ -328,6 +328,7 @@ adminRouter.patch('/settings', ah(async (req, res) => {
       allowManualQuotes: z.boolean(),
       manualUsdTwd: z.number().min(20).max(50).nullable(),
       tradingFrozen: z.boolean(),
+      enforcePriceLimits: z.boolean(),
     })
     .partial()
     .parse(req.body);
