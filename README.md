@@ -103,7 +103,7 @@ Cloud Run 每次重啟都會清空容器硬碟，所以本專案用 **Litestream
      - `LITESTREAM_REPLICA_URL` = `gcs://你的bucket名稱/tycoon.db`
      - `ADMIN_PASSWORD` = 管理員初始密碼
      - `FINMIND_TOKEN` = （選填）
-4. **授權備份**：到 bucket 的「權限」，把 Cloud Run 使用的服務帳戶加入，角色選「Storage 物件管理員 (Storage Object Admin)」。
+4. **授權備份**：到 bucket 的「權限」，把 Cloud Run 使用的服務帳戶加入，角色選「儲存空間物件管理員 (Storage Object Admin)」。
 5. 部署完成後 Cloud Run 會給一個 `https://…run.app` 網址。之後每次推送到 `main` 都會自動重新部署，資料會保留。
 
 注意：部署切換的短暫期間可能同時有新舊兩個容器，極少數情況下該瞬間的寫入可能遺失；正式比賽前後建議從後台下載一次資料庫備份。
