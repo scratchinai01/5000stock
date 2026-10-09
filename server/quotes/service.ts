@@ -75,12 +75,54 @@ function lastKnown(symbol: string): Quote | null {
   return r ? (JSON.parse(r.json) as Quote) : null;
 }
 
+/** 最近一筆以盤中真實報價 (LIVE/DELAYED) 成交的價格，也算「最後已知報價」 */
+function lastTradedQuote(symbol: string): Quote | null {
+  const rows = getDb()
+    .prepare('SELECT price, currency, quote_json FROM trades t JOIN instruments i USING (symbol) WHERE t.symbol = ? ORDER BY executed_at DESC LIMIT 20')
+    .all(symbol) as any[];
+  for (const r of rows) {
+    const s = JSON.parse(r.quote_json) as QuoteSnapshot;
+    if ((s.basis !== 'LIVE' && s.basis !== 'DELAYED') || s.quoteTimeZone !== 'Asia/Taipei' || !s.quoteTime) continue;
+    return {
+      symbol, price: r.price, currency: r.currency, basis: s.basis, quoteDate: s.quoteDate, quoteTime: s.quoteTime,
+      quoteTimeZone: s.quoteTimeZone, quoteEpoch: taipeiEpoch(s.quoteDate, s.quoteTime), source: s.source, fetchedAt: 0,
+    };
+  }
+  return null;
+}
+
+/** 快取與成交紀錄中，報價時間較新的那一筆 */
+export function newestKnown(symbol: string): Quote | null {
+  const a = lastKnown(symbol);
+  const b = lastTradedQuote(symbol);
+  if (!a) return b;
+  if (!b) return a;
+  return b.quoteEpoch > a.quoteEpoch ? b : a;
+}
+
 function remember(q: Quote) {
   getDb()
     .prepare(
       'INSERT INTO quote_cache (symbol, json, fetched_at) VALUES (?, ?, ?) ON CONFLICT(symbol) DO UPDATE SET json=excluded.json, fetched_at=excluded.fetched_at'
     )
     .run(q.symbol, JSON.stringify(q), q.fetchedAt);
+}
+
+/**
+ * 報價不可「倒退」：供應商回傳的報價若比先前取得的盤中真實成交 (LIVE/DELAYED) 還舊，
+ * 改用較新的那筆，並標示為收盤／最後成交。
+ * 例：期貨夜盤 05:00 最後成交 48705 之後，日資料仍是前一日日盤 13:45 收盤 49349，
+ *     不可用較舊的 49349 估值或成交。
+ */
+export function preferNewer(fresh: Quote, last: Quote | null): Quote {
+  if (!last || (last.basis !== 'LIVE' && last.basis !== 'DELAYED')) return fresh;
+  if (last.quoteEpoch <= fresh.quoteEpoch) return fresh;
+  return {
+    ...last,
+    basis: 'CLOSE',
+    source: `${last.source}（最後成交；${fresh.source} 尚未更新）`,
+    fetchedAt: fresh.fetchedAt,
+  };
 }
 
 export async function getQuote(inst: Instrument, opts: { force?: boolean } = {}): Promise<QuoteResult> {
@@ -101,10 +143,11 @@ export async function getQuote(inst: Instrument, opts: { force?: boolean } = {})
   const p = (async (): Promise<QuoteResult> => {
     let error: string | undefined;
     try {
-      const q = await fetchFromProvider(inst);
-      if (q) {
+      const fresh = await fetchFromProvider(inst);
+      if (fresh) {
+        const q = preferNewer(fresh, newestKnown(key));
         memCache.set(key, { quote: q, expires: Date.now() + ttlFor(inst) });
-        remember(q);
+        if (q === fresh) remember(q); // 只在報價較新時覆蓋「最後已知報價」
         return { quote: q };
       }
       error = '供應商未回傳此商品報價';
