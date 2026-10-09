@@ -1,0 +1,24 @@
+# Render Blueprint：在 Render 選「New → Blueprint」並指定此 repo，即可一次建立服務
+# 之後每次推送到 main 分支都會自動重新部署
+services:
+  - type: web
+    name: 5000stock
+    runtime: docker
+    plan: starter            # 永久硬碟需要付費方案；free 方案重啟會清空資料
+    region: singapore        # 離台灣最近
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /healthz
+    disk:
+      name: data
+      mountPath: /data       # SQLite 資料庫存放位置，重新部署不會消失
+      sizeGB: 1
+    envVars:
+      - key: DATA_DIR
+        value: /data
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        sync: false          # 建立時由你在畫面上輸入，不寫進程式碼
+      - key: FINMIND_TOKEN
+        sync: false          # 選填，可留空

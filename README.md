@@ -76,6 +76,18 @@ npm start
 - 課堂區網用 `http://IP` 直接連線的正式模式，請設 `INSECURE_COOKIE=1`，否則瀏覽器不會儲存登入 cookie。
 - 報價需要能連到 `api.finmindtrade.com`、`query1.finance.yahoo.com`、`api.binance.com`。Yahoo 為非官方介面，可能偶爾失效，此時會自動改用備援並在後台顯示。
 
+## 部署到 Render（推送 GitHub 自動部署）
+
+專案根目錄的 `render.yaml` 已設定好服務、硬碟與環境變數。
+
+1. 到 https://dashboard.render.com 用 GitHub 登入。
+2. 點「New」→「Blueprint」，選 `5000stock` repo。
+3. 畫面會列出要建立的服務 `5000stock`，在 `ADMIN_PASSWORD` 欄位輸入管理員密碼（`FINMIND_TOKEN` 可留空），按「Apply」。
+4. 等待建置完成（第一次約 5–10 分鐘），Render 會給一個 `https://5000stock-xxxx.onrender.com` 網址。
+5. 之後每次推送到 `main` 都會自動重新部署，資料存在硬碟 `/data`，不會因部署而消失。
+
+注意：永久硬碟只有付費方案（Starter 以上）提供；改用免費方案資料會在重啟或休眠後消失，只適合試用。費用以 Render 公告為準。
+
 ## 部署到 Google Cloud Run（推送 GitHub 自動部署）
 
 Cloud Run 每次重啟都會清空容器硬碟，所以本專案用 **Litestream** 把 SQLite 每秒備份到 Cloud Storage，容器啟動時自動還原（`deploy/start.sh`、`deploy/litestream.yml`，已包含在 `Dockerfile`）。
