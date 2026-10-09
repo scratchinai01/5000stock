@@ -7,8 +7,17 @@ const at = (iso: string) => Date.parse(iso);
 test('台指期：週二凌晨 02:00 (台北) 為夜盤，不受伺服器時區影響', () => {
   assert.equal(getSession('tw_future', at('2026-10-06T02:00:00+08:00')).isOpen, true);
   assert.equal(getSession('tw_future', at('2026-10-05T02:00:00+08:00')).isOpen, false); // 週一凌晨 (週末後)
-  assert.equal(getSession('tw_future', at('2026-10-10T03:00:00+08:00')).isOpen, true); // 週六凌晨 (週五夜盤)
+  assert.equal(getSession('tw_future', at('2026-10-03T03:00:00+08:00')).isOpen, true); // 週六凌晨 (週五夜盤)
   assert.equal(getSession('tw_future', at('2026-10-06T14:00:00+08:00')).isOpen, false); // 日夜盤間
+});
+
+test('休市日：2026-10-09 國慶補假，台股與期貨日盤、夜盤皆休市', () => {
+  assert.equal(getSession('tw_stock', at('2026-10-09T10:00:00+08:00')).isOpen, false);
+  assert.equal(getSession('tw_future', at('2026-10-09T10:00:00+08:00')).isOpen, false);
+  assert.equal(getSession('tw_future', at('2026-10-09T16:00:00+08:00')).isOpen, false); // 休市日不開夜盤
+  assert.equal(getSession('tw_future', at('2026-10-10T03:00:00+08:00')).isOpen, false); // 週六凌晨 (前一天休市)
+  assert.equal(getSession('tw_future', at('2026-10-09T02:00:00+08:00')).isOpen, true); // 10/8 夜盤延續到 10/9 凌晨
+  assert.equal(getSession('tw_stock', at('2026-10-08T10:00:00+08:00')).isOpen, true); // 前一天正常
 });
 
 test('台股：13:30 收盤、14:00–14:30 盤後定價、週末休市', () => {

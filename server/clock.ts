@@ -1,12 +1,30 @@
 // 各市場交易時段 (以台北時間判斷；美股以紐約時間判斷，自動處理夏令時間)。
-// 不含國定假日 (休市日請管理員以「凍結交易」處理，或於 HOLIDAYS 加入日期)。
+// 台灣休市日列於 TW_HOLIDAYS (每年需更新)；美股與 CME 未含其國定假日。
 import type { Category, SessionInfo } from '../shared/types.ts';
 import { zonedParts } from './time.ts';
 
 /** 台灣證交所 / 期交所休市日 (YYYY-MM-DD)，可自行補充 */
+// 2026 (民國 115 年) 依證交所公告之平日休市日；週末不需列入。每年底請補上隔年日期。
 export const TW_HOLIDAYS = new Set<string>([
-  // 例：'2026-10-10',
+  '2026-01-01',
+  '2026-02-12', '2026-02-13', // 春節前 (僅辦理結算交割)
+  '2026-02-16', '2026-02-17', '2026-02-18', '2026-02-19', '2026-02-20', // 春節
+  '2026-02-27', // 和平紀念日補假
+  '2026-04-03', '2026-04-06', // 兒童節、清明節
+  '2026-05-01', // 勞動節
+  '2026-06-19', // 端午節
+  '2026-09-25', '2026-09-28', // 中秋節、教師節
+  '2026-10-09', // 國慶日補假
+  '2026-10-26', // 光復節補假
+  '2026-12-25', // 行憲紀念日
 ]);
+
+const ymd = (ms: number) => zonedParts(ms, 'Asia/Taipei').dateStr;
+/** 台灣的交易日：週一至週五且非休市日 */
+function isTwTradingDay(ms: number): boolean {
+  const p = zonedParts(ms, 'Asia/Taipei');
+  return p.weekday >= 1 && p.weekday <= 5 && !TW_HOLIDAYS.has(ymd(ms));
+}
 
 const hm = (h: number, m: number) => h * 100 + m;
 
@@ -31,7 +49,8 @@ export function getSession(category: Category, now = Date.now()): SessionInfo {
     case 'tw_option': {
       // 日盤 08:45–13:45；夜盤 15:00–次日 05:00 (週一夜盤起、週六 05:00 止)
       const dayOpen = isWeekday && !holiday && t >= 845 && t < 1345;
-      const nightOpen = (isWeekday && t >= 1500) || (d >= 2 && d <= 6 && t < 500);
+      // 夜盤：當天是交易日才開 15:00 場；凌晨 05:00 前屬於「前一天」的夜盤
+      const nightOpen = (isWeekday && !holiday && t >= 1500) || (t < 500 && isTwTradingDay(now - 86_400_000));
       if (dayOpen) return s('TAIFEX', true, '期貨日盤 08:45–13:45', '13:45 收盤');
       if (nightOpen) return s('TAIFEX', true, '期貨夜盤 15:00–05:00', '05:00 收盤');
       if (isWeekday && t >= 1345 && t < 1500) return s('TAIFEX', false, '日夜盤間休息', '15:00 夜盤');
